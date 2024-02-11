@@ -35,13 +35,16 @@ public class TailReader {
             // of the chunk loop since the chunk is an arbitrary boundary and may split a line. (The next chunk
             // would finish the line and flush the characters from the buffer into the collected lines.)
             var lineBuffer = new StringBuilder();
+            // Keep track of how many bytes we read from the file so that we can stop from reading
+            // the head of the file multiple times.
+            var bytesRead = 0;
             // Chunk through the file while the collectedLines size is less than the lineCount
             // or we've reached the start of the file.
-            while (collectedLines.size() < lineCount || start > 0) {
+            while (collectedLines.size() < lineCount || bytesRead < ch.size()) {
                 // Set the position of the channel to the start of the chunk.
                 ch.position(start);
                 // Read the bytes from the channel starting from the position into the bytebuffer.
-                ch.read(bb);
+                bytesRead += ch.read(bb);
                 for (int i = bb.position() - 1; i > 0; i--) {
                     // TODO Read as UTF-16
                     var c = (char) bb.get(i);
@@ -50,7 +53,8 @@ public class TailReader {
                     //      is a line separator.
                     if (String.valueOf(c).equals(System.lineSeparator())) {
                         if (lineBuffer.length() <= 0) {
-                            // skip flushing of the lineBuffer is empty
+                            // skip flushing of the lineBuffer is empty, e.g. if the last
+                            // character in the file is a line-ending.
                             continue;
                         }
                         // If this char is a line separator, reverse the lineBuffer (since we're
@@ -69,9 +73,14 @@ public class TailReader {
                     }
                 }
                 // End of chunk
-                // Prepare for the next chunk by stepping to start backwards by the size of the buffer
-                // and clearing the buffer of its contents so that the next read will fill the buffer
-                // with the next chunk of text from the file.
+
+                // Break out of chunking if we already have enough lines
+                if (collectedLines.size() == lineCount) {
+                    break;
+                }
+                // Otherwise, prepare for the next chunk by stepping start backwards by the size
+                // of the buffer and clearing the buffer of its contents so that the next read will
+                // fill the buffer with the next chunk of text from the file.
                 start = Math.max(0, start - bb.limit());
                 bb.clear();
             }
