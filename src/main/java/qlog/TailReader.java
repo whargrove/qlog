@@ -12,6 +12,7 @@ import java.util.List;
 
 public class TailReader {
 
+    // TODO the buffer capacity should be configurable
     private static final int CAP = 65536; // 8KB
 
 
