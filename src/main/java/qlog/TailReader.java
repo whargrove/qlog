@@ -1,65 +1,85 @@
 package qlog;
 
 import java.io.IOException;
-import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 
 public class TailReader {
 
+    private static final int CAP = 65536; // 8KB
+
+    // TODO Add line filter
     public static List<String> getLastNLines(Path file, int lineCount) {
+        // Each chunk of the file will be read into this buffer
+        var bb = ByteBuffer.allocate(CAP);
+
+        // Collect encountered lines into this List to be returned when the
+        // line count requirement is satisfied.
         var collectedLines = new ArrayList<String>();
-        try (var raf = new RandomAccessFile(file.toFile(), "r")) {
-            // Create an instance of a RandomAccessFile so that we can manipulate a custom cursor
-            // that seeks through the file appending character into a buffer and then flushing the
-            // buffer into a String and appending to a List when encountering a line-ending
-            // character.
 
-            // Iterate backwards through the file so that we only read from disk the necessary
-            // chunks of the file that should be included in the result.
-
-            // assume the last char of the file is a \n, we don't want this to count as a
-            // "seen line" so we "skip" over it.
-            var cur = raf.length() - 1;
-            // stopping when we read enough lines to satisfy the lineCount
-            var linesRead = 0;
-            // the initial capacity is probably reasonable default
-            var buffer = new StringBuilder();
-            while ((--cur) >= 0 && linesRead < lineCount) {
-                raf.seek(cur);
-                char c;
-                // check if we're at the beginning of the file
-                if (cur > 0) {
-                    // TODO This only works for ASCII
-                    // TODO Read larger chunks of the file in each loop
-                    //      RandomAccessFile#readByte is blocking and requires context switching
-                    //      For example, we could define a buffer size, e.g. 65536 (64KB) or larger
-                    //      and step backwards by the buffer size, then read the file into the
-                    //      buffer, split into sequences by newline chars.
-                    //      This could potentially "over read" the file (by as much as the buffer
-                    //      size) but is strictly better since it would avoid many ctx switches
-                    //      during the loop.
-                    c = (char)raf.readByte();
-                    // TODO support other line endings
-                    // if this char is a line ending
-                    if (c == '\n') {
-                        // then increment the linesRead counter
-                        linesRead++;
-                        // and flush the buffer into the result
-                        collectedLines.addLast(buffer.reverse().toString());
-                        buffer.setLength(0);
+        // Open a seekable channel to the file so that we can read chunks of the file starting
+        // at the end. The start of each read will be determined as the byte-position end of the
+        // file minus the capacity of the byte buffer. Each "step" will move the start backwards
+        // through the file like a cursor and read the chunk into the byte buffer.
+        // This approach requires use of a SeekableByteChannel so that we can manually control
+        // position of the channel while reading the chunks.
+        try (var ch = Files.newByteChannel(file, StandardOpenOption.READ)) {
+            // The start of the chunk is the end (channel size) minus the capacity (limit) of the buffer.
+            // If the file is smaller than the buffer we do not allow start to be negative so take the max of 0.
+            var start = Math.max(0, ch.size() - bb.limit());
+            // Create a lineBuffer to store characters read from the chunk. This buffer exists outside the scope
+            // of the chunk loop since the chunk is an arbitrary boundary and may split a line. (The next chunk
+            // would finish the line and flush the characters from the buffer into the collected lines.)
+            var lineBuffer = new StringBuilder();
+            // Chunk through the file while the collectedLines size is less than the lineCount
+            // or we've reached the start of the file.
+            while (collectedLines.size() < lineCount || start > 0) {
+                // Set the position of the channel to the start of the chunk.
+                ch.position(start);
+                // Read the bytes from the channel starting from the position into the bytebuffer.
+                ch.read(bb);
+                for (int i = bb.position() - 1; i > 0; i--) {
+                    // TODO Read as UTF-16
+                    var c = (char) bb.get(i);
+                    // TODO String#valueOf allocates a String on the heap for each char
+                    //      Investigate a more efficient way to check if the current char
+                    //      is a line separator.
+                    if (String.valueOf(c).equals(System.lineSeparator())) {
+                        if (lineBuffer.length() <= 0) {
+                            // skip flushing of the lineBuffer is empty
+                            continue;
+                        }
+                        // If this char is a line separator, reverse the lineBuffer (since we're
+                        // iterating through chars backwards), and flush it to a String in the
+                        // result list of collected lines.
+                        // TODO Implement line filter
+                        //      Flush the lineBuffer only if the string contains the substring
+                        collectedLines.addLast(lineBuffer.reverse().toString());
+                        lineBuffer.setLength(0);
+                        if (collectedLines.size() >= lineCount) {
+                            // break out of looping through this chunk if we have enough lines
+                            break;
+                        }
                     } else {
-                        buffer.append(c);
+                        lineBuffer.append(c);
                     }
                 }
+                // End of chunk
+                // Prepare for the next chunk by stepping to start backwards by the size of the buffer
+                // and clearing the buffer of its contents so that the next read will fill the buffer
+                // with the next chunk of text from the file.
+                start = Math.max(0, start - bb.limit());
+                bb.clear();
             }
         } catch (IOException e) {
-            // TODO Implement better error handling
-            e.printStackTrace();
-            return List.of();
+            // TODO implement better error handling
+            throw new RuntimeException(e);
         }
         return collectedLines;
     }
-    
+
 }
