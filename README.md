@@ -4,7 +4,8 @@ qlog is a microservice that functions as an implementation of `tail` for files a
 
 ## Getting Started
 
-qlog is a Java application using the Micronaut framework; Accordingly, we'll need to set up a few dependencies to get started.
+qlog is a Java application using the Micronaut framework; Accordingly, we'll need to set up a few dependencies to get
+started.
 
 This guide assumes you are using a modern version of macOS with `homebrew` installed.
 
@@ -24,7 +25,8 @@ After the dependencies are installed build the project:
 ./gradlew build
 ```
 
-This will initialize a new Gradle daemon and fetch the required dependencies from Maven Central repository and then build the project, including running the unit tests.
+This will initialize a new Gradle daemon and fetch the required dependencies from Maven Central repository and then
+build the project, including running the unit tests.
 
 ## Run with Gradle
 
@@ -34,7 +36,8 @@ Run the service directly with Gradle:
 ./gradlew run
 ```
 
-Gradle will use the compiled JAR (from the build step) and run it. You can confirm the service is up when your shell prints:
+Gradle will use the compiled JAR (from the build step) and run it. You can confirm the service is up when your shell
+prints:
 
 ```shell
 Startup completed in 294ms. Server Running: http://localhost:8080
@@ -46,7 +49,12 @@ TODO: Add docker build instructions
 
 ## Prepare A Large Log File
 
-TODO: Add python script to generate a large log file for practice.
+```shell
+python3 ./scripts/genlog.py && sudo mv ./access.log /var/log/access.log
+```
+
+Generates a simulated Apache access log file that is ~2GB in size. You can use this file to query against the API or you
+can use any file you may already have or want to place in /var/log on your system.
 
 ## Tail A File
 
@@ -58,9 +66,11 @@ curl -Ss "localhost:8080/queryLog?relativePath=access.log" | jq .
 
 The service supports a trio of query params:
 
-1. `relativePath` - Required, the file path relative to `/var/log` accessible to the service. This is the file that will be tailed by the service.
+1. `relativePath` - Required, the file path relative to `/var/log` accessible to the service. This is the file that will
+   be tailed by the service.
 2. `lineCount` - Optional, default 42, the number of lines to return.
-3. `filter` - Optional, default no op, the service will filter lines in the result set based on substring matching of the text in this filter against the line in the file.
+3. `filter` - Optional, default no op, the service will filter lines in the result set based on substring matching of
+   the text in this filter against the line in the file.
 
 Query parameter values must be URL encoded.
 
@@ -129,4 +139,5 @@ Percentage of the requests served within a certain time (ms)
  100%    539 (longest request)
 ```
 
-Tune the concurrency (-c), the total number of requests (-n), and the target URL to get a clear understanding of the performance characteristics of the service.
+Tune the concurrency (-c), the total number of requests (-n), and the target URL to get a clear understanding of the
+performance characteristics of the service.
