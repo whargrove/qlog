@@ -76,6 +76,26 @@ public class TailReaderTest implements WithAssertions {
                 .containsExactlyElementsOf(expected);
     }
 
+    @Test
+    void onlyLinesMatchingFilterAreReturned() {
+        var path = getPathToResource("macbeth.txt");
+        List<String> actual = TailReader.getLastNLines(path, 1, "tomorrow");
+        assertThat(actual).hasSize(1);
+        assertThat(actual).containsExactlyElementsOf(List.of("Tomorrow, and tomorrow, and tomorrow,"));
+    }
+
+    @Test
+    void multipleLinesMatchingFilterAreReturned() {
+        var path = getPathToResource("macbeth.txt");
+        List<String> actual = TailReader.getLastNLines(path, 3, ",");
+        assertThat(actual).hasSize(3);
+        assertThat(actual)
+                .containsExactlyElementsOf(List.of(
+                        "Told by an idiot, full of sound and fury,",
+                        "That struts and frets his hour upon the stage,",
+                        "Life's but a walking shadow, a poor player,"));
+    }
+
     @SuppressWarnings("SameParameterValue")
     private Path getPathToResource(String fileName) {
         var resourceURL = getClass().getClassLoader().getResource(fileName);

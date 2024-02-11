@@ -1,5 +1,7 @@
 package qlog;
 
+import jakarta.annotation.Nullable;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
@@ -12,8 +14,27 @@ public class TailReader {
 
     private static final int CAP = 65536; // 8KB
 
-    // TODO Add line filter
-    public static List<String> getLastNLines(Path file, int lineCount) {
+
+    /**
+     * Get the last N lines from a file.
+     *
+     * @param path      A path to the file to read lines from.
+     * @param lineCount The number of lines to read out in the returned List.
+     * @return A List of lines ordered with the newest entries at the head of the List.
+     */
+    public static List<String> getLastNLines(Path path, int lineCount) {
+        return getLastNLines(path, lineCount, null);
+    }
+
+    /**
+     * Get the last N lines from a file.
+     *
+     * @param path      A path to the file to read lines from.
+     * @param lineCount The number of lines to read out in the returned List.
+     * @param filter    If present, a line is counted only when it matches the filter.
+     * @return A List of lines ordered with the newest entries at the head of the List.
+     */
+    public static List<String> getLastNLines(Path path, int lineCount, @Nullable String filter) {
         // Each chunk of the file will be read into this buffer
         var bb = ByteBuffer.allocate(CAP);
 
@@ -27,7 +48,7 @@ public class TailReader {
         // through the file like a cursor and read the chunk into the byte buffer.
         // This approach requires use of a SeekableByteChannel so that we can manually control
         // position of the channel while reading the chunks.
-        try (var ch = Files.newByteChannel(file, StandardOpenOption.READ)) {
+        try (var ch = Files.newByteChannel(path, StandardOpenOption.READ)) {
             // The start of the chunk is the end (channel size) minus the capacity (limit) of the buffer.
             // If the file is smaller than the buffer we do not allow start to be negative so take the max of 0.
             var start = Math.max(0, ch.size() - bb.limit());
@@ -68,13 +89,19 @@ public class TailReader {
                             // character in the file is a line-ending.
                             continue;
                         }
-                        // If this char is a line separator, reverse the lineBuffer (since we're
-                        // iterating through chars backwards), and flush it to a String in the
-                        // result list of collected lines.
-                        // TODO Implement line filter
-                        //      Flush the lineBuffer only if the string contains the substring
-                        collectedLines.addLast(lineBuffer.reverse().toString());
+                        // Reverse the buffer (since we're iterating through chars backwards),
+                        // and flush it to the result set. If there's a filter defined in the
+                        // arguments, then apply the filter before adding to the result set.
+                        var stringFromBuffer = lineBuffer.reverse().toString();
                         lineBuffer.setLength(0);
+                        if (filter != null) {
+                            if (stringFromBuffer.contains(filter)) {
+                                collectedLines.add(stringFromBuffer);
+                            }
+                        } else {
+                            collectedLines.addLast(stringFromBuffer);
+                        }
+
                         if (collectedLines.size() >= lineCount) {
                             // break out of looping through this chunk if we have enough lines
                             break;
@@ -107,5 +134,4 @@ public class TailReader {
         }
         return collectedLines;
     }
-
 }
