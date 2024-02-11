@@ -39,13 +39,24 @@ public class TailReader {
             // the head of the file multiple times.
             var bytesRead = 0;
             // Chunk through the file while the collectedLines size is less than the lineCount
-            // or we've reached the start of the file.
+            // or we've read all the bytes in the file.
             while (collectedLines.size() < lineCount || bytesRead < ch.size()) {
+                if (bytesRead > 0) {
+                    // Each time we start a new chunk, we want to dynamically size the limit
+                    // of the byte buffer so that we only read the bytes necessary to complete
+                    // the chunk and read the whole file. This is especially impactful when
+                    // we reach the head of the file to avoid reading bytes from the file
+                    // that were already read in a previous chunk.
+                    //
+                    // We use min(CAP, size - bytesRead) to avoid setting a larger limit
+                    // that what the buffer was allocated with.
+                    bb.limit(Math.min(CAP, (int) ch.size() - bytesRead));
+                }
                 // Set the position of the channel to the start of the chunk.
                 ch.position(start);
                 // Read the bytes from the channel starting from the position into the bytebuffer.
                 bytesRead += ch.read(bb);
-                for (int i = bb.position() - 1; i > 0; i--) {
+                for (int i = bb.position() - 1; i >= 0; i--) {
                     // TODO Read as UTF-16
                     var c = (char) bb.get(i);
                     // TODO String#valueOf allocates a String on the heap for each char
@@ -73,6 +84,12 @@ public class TailReader {
                     }
                 }
                 // End of chunk
+
+                if (!lineBuffer.isEmpty() && bytesRead >= ch.size()) {
+                    // Flush the lineBuffer into the result set if we're at the beginning of the file.
+                    collectedLines.addLast(lineBuffer.reverse().toString());
+                    lineBuffer.setLength(0);
+                }
 
                 // Break out of chunking if we already have enough lines
                 if (collectedLines.size() == lineCount) {
