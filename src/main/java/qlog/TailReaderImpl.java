@@ -3,10 +3,15 @@ package qlog;
 import io.micronaut.context.annotation.Value;
 import jakarta.annotation.Nullable;
 import jakarta.inject.Singleton;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import qlog.exc.TailReaderFileNotFoundException;
+import qlog.exc.TailReaderIOException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
@@ -14,6 +19,8 @@ import java.util.List;
 
 @Singleton
 public class TailReaderImpl implements TailReader {
+
+    private static final Logger LOG = LoggerFactory.getLogger(TailReaderImpl.class);
 
     private final int bufferCapacity;
 
@@ -120,8 +127,13 @@ public class TailReaderImpl implements TailReader {
                 bb.clear();
             }
         } catch (IOException e) {
-            // TODO implement better error handling
-            throw new RuntimeException(e);
+            if (e instanceof NoSuchFileException noSuchFileException) {
+                LOG.info("File not found: {}", path, noSuchFileException);
+                throw new TailReaderFileNotFoundException("File not found: " + path, noSuchFileException);
+            } else {
+                LOG.error("Error reading file: {}", path, e);
+                throw new TailReaderIOException("Error reading file: " + path, e);
+            }
         }
         return collectedLines;
     }
