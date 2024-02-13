@@ -1,17 +1,18 @@
 # qlog
 
-qlog is a microservice that functions as an implementation of `tail` for files accessible to the service.
+qlog is a microservice that functions as an implementation of `tail` for ASCII files accessible to the service.
 
 ## Getting Started
 
-qlog is a Java application using the Micronaut framework; Accordingly, we'll need to set up a few dependencies to get
-started.
+qlog is a Java application using the [Micronaut](https://micronaut.io/) framework; Accordingly, we'll need to set up a
+few dependencies to get started.
 
-This guide assumes you are using a modern version of macOS with `homebrew` installed.
-
-1. Install sdkman
-2. Initialize your shell to be sdkman aware
-3. In the root directory of the project:
+1. Install [SDKMAN!](https://sdkman.io/install)
+    ```shell
+    curl -s "https://get.sdkman.io" | bash
+    source "$HOME/.sdkman/bin/sdkman-init.sh" # setup your shell for SDKMAN!
+    ```
+2. In the root directory of the project:
     ```shell
     sdk env install
     ```
@@ -73,6 +74,10 @@ can use any file you may already have or want to place in /var/log on your syste
 
 ## Tail A File
 
+The service serves a single endpoint: queryLog that returns a JSON object containing data field with an array of strings
+corresponding to the lines in the file. The endpoint will tail that service and return the last `n` lines of the file.
+Lines are returned as if `tail -r` was used, so the last line of the file is the first item in the array.
+
 Query for lines from a file using `curl`:
 
 ```shell
@@ -96,6 +101,10 @@ curl -Ss "localhost:8080/queryLog?relativePath=access.log&count=10&filter=DELETE
 ## Benchmarking
 
 If you're feeling spunky you can benchmark the service with `ab`: ApacheBench.
+
+Hardware Used for below benchmark:
+
+MacBook Pro M1 Max, 10-Core (8 performance + 2 efficiency), 64GB RAM, 4TB SSD.
 
 ```shell
 ab -c 8 -n 10000 "http://localhost:8080/queryLog?relativePath=access.log&count=100&filter=%20200%20"
