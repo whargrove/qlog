@@ -45,7 +45,22 @@ Startup completed in 294ms. Server Running: http://localhost:8080
 
 ## Optional: Run with Docker
 
-TODO: Add docker build instructions
+You may also run the service using Docker.
+
+First, build the Docker image:
+
+```shell
+./gradlew docker && docker build ./build/docker/main -t qlog
+```
+
+Then run the container:
+
+```shell
+docker run -d -p 8080:8080 -v /var/log:/var/log --name qlog qlog
+```
+
+The source of the volume can be any directory on your system. The service will read from files relative to `/var/log`
+within the container.
 
 ## Prepare A Large Log File
 
