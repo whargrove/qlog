@@ -1,6 +1,7 @@
 package qlog;
 
 import jakarta.annotation.Nullable;
+import jakarta.inject.Singleton;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -10,6 +11,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 
+@Singleton
 public class TailReaderImpl implements TailReader {
 
     // TODO the buffer capacity should be configurable

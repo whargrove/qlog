@@ -8,13 +8,21 @@ import io.micronaut.scheduling.TaskExecutors;
 import io.micronaut.scheduling.annotation.ExecuteOn;
 import io.micronaut.serde.annotation.Serdeable.Serializable;
 import jakarta.annotation.Nullable;
-import qlog.TailReaderImpl;
+import jakarta.inject.Inject;
+import qlog.TailReader;
 
 import java.nio.file.Path;
 import java.util.List;
 
 @Controller("/queryLog")
 public class QueryLogController {
+
+    private final TailReader tailReader;
+
+    @Inject
+    public QueryLogController(TailReader tailReader) {
+        this.tailReader = tailReader;
+    }
 
     /**
      * Reads the "tail" of a file in /var/log.
@@ -28,7 +36,7 @@ public class QueryLogController {
     public HttpResponse<QueryLog> queryLog(@QueryValue String relativePath,
                                            @QueryValue(defaultValue = "42") int count,
                                            @QueryValue @Nullable String filter) {
-        var lines = new TailReaderImpl().getLastNLines(Path.of("/var/log", relativePath), count, filter);
+        var lines = this.tailReader.getLastNLines(Path.of("/var/log", relativePath), count, filter);
         return HttpResponse.ok(new QueryLog(lines));
     }
 
