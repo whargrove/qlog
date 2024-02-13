@@ -76,12 +76,20 @@ public class TailReaderImpl implements TailReader {
                 // Read the bytes from the channel starting from the position into the bytebuffer.
                 bytesRead += ch.read(bb);
                 for (int i = bb.position() - 1; i >= 0; i--) {
-                    // TODO Read as UTF-16
+                    // Casting byte to char means this reader only supports ASCII encoded files.
+                    //
+                    // Supporting UTF-8 would require using a CharsetDecoder to decode bytes from
+                    // the chunk into characters. However, because we are tailing the file (that is
+                    // starting with the end of the file), and supporting UTF-8 requires reading the
+                    // bytes in forward order to decode bytes into a complete codepoint, we would
+                    // need to implement a more complex buffer management to handle boundary cases
+                    // where a code unit is split between two chunks. The complexity mainly arises
+                    // from needing to search the head (furthest away from the end of the file) of
+                    // the byte buffer to find the beginning of a code unit and then adjusting the
+                    // size of the next chunk to read any bytes that were skipped in the previous
+                    // chunk.
                     var c = (char) bb.get(i);
-                    // TODO String#valueOf allocates a String on the heap for each char
-                    //      Investigate a more efficient way to check if the current char
-                    //      is a line separator.
-                    if (String.valueOf(c).equals(System.lineSeparator())) {
+                    if (c == '\n') {
                         if (lineBuffer.length() <= 0) {
                             // skip flushing of the lineBuffer is empty, e.g. if the last
                             // character in the file is a line-ending.
