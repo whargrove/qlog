@@ -1,6 +1,7 @@
 package qlog;
 
 import org.assertj.core.api.WithAssertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -16,7 +17,7 @@ public class TailReaderTest implements WithAssertions {
     void returnsLastNLinesInFile() {
         var file = getPathToResource("macbeth.txt");
         var n = 3;
-        List<String> lastNLines = new TailReaderImpl().getLastNLines(file, n, null);
+        List<String> lastNLines = new TailReaderImpl(65536).getLastNLines(file, n, null);
 
         assertThat(lastNLines)
                 .as("The last N lines were read from the file.")
@@ -33,7 +34,7 @@ public class TailReaderTest implements WithAssertions {
     void fileLargerThanBufferReturnsLastNLinesInFile() throws IOException {
         var path = getPathToResource("128k_access.log");
         var n = 5;
-        List<String> lastNLines = new TailReaderImpl().getLastNLines(path, n, null);
+        List<String> lastNLines = new TailReaderImpl(65536).getLastNLines(path, n, null);
 
         assertThat(lastNLines)
                 .as("The last N lines were read from the file.")
@@ -49,7 +50,7 @@ public class TailReaderTest implements WithAssertions {
     void largeCountOfFilesCollectsLinesAcrossChunkBoundaries() throws IOException {
         var path = getPathToResource("128k_access.log");
         var n = 250;
-        List<String> lastNLines = new TailReaderImpl().getLastNLines(path, n, null);
+        List<String> lastNLines = new TailReaderImpl(65536).getLastNLines(path, n, null);
 
         assertThat(lastNLines)
                 .as("The last N lines were read from the file.")
@@ -65,7 +66,7 @@ public class TailReaderTest implements WithAssertions {
     void readingAllOfTheLinesInAFileReturnsTheLinesInReversedOrder() throws IOException {
         var path = getPathToResource("128k_access.log");
         var n = (int) Files.lines(path).count(); // all lines
-        List<String> lastNLines = new TailReaderImpl().getLastNLines(path, n, null);
+        List<String> lastNLines = new TailReaderImpl(65536).getLastNLines(path, n, null);
 
         assertThat(lastNLines)
                 .as("The last N lines were read from the file.")
@@ -79,7 +80,7 @@ public class TailReaderTest implements WithAssertions {
     @Test
     void onlyLinesMatchingFilterAreReturned() {
         var path = getPathToResource("macbeth.txt");
-        List<String> actual = new TailReaderImpl().getLastNLines(path, 1, "tomorrow");
+        List<String> actual = new TailReaderImpl(65536).getLastNLines(path, 1, "tomorrow");
         assertThat(actual).hasSize(1);
         assertThat(actual).containsExactlyElementsOf(List.of("Tomorrow, and tomorrow, and tomorrow,"));
     }
@@ -87,7 +88,7 @@ public class TailReaderTest implements WithAssertions {
     @Test
     void multipleLinesMatchingFilterAreReturned() {
         var path = getPathToResource("macbeth.txt");
-        List<String> actual = new TailReaderImpl().getLastNLines(path, 3, ",");
+        List<String> actual = new TailReaderImpl(65536).getLastNLines(path, 3, ",");
         assertThat(actual).hasSize(3);
         assertThat(actual)
                 .containsExactlyElementsOf(List.of(

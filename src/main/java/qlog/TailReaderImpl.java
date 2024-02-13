@@ -1,5 +1,6 @@
 package qlog;
 
+import io.micronaut.context.annotation.Value;
 import jakarta.annotation.Nullable;
 import jakarta.inject.Singleton;
 
@@ -14,8 +15,11 @@ import java.util.List;
 @Singleton
 public class TailReaderImpl implements TailReader {
 
-    // TODO the buffer capacity should be configurable
-    private static final int CAP = 65536; // 8KB
+    private final int bufferCapacity;
+
+    public TailReaderImpl(@Value("${qlog.tail.buffer.capacity:65536}") int bufferCapacity) {
+        this.bufferCapacity = bufferCapacity;
+    }
 
     /**
      * {@inheritDoc}
@@ -23,7 +27,7 @@ public class TailReaderImpl implements TailReader {
     @Override
     public List<String> getLastNLines(Path path, int lineCount, @Nullable String filter) {
         // Each chunk of the file will be read into this buffer
-        var bb = ByteBuffer.allocate(CAP);
+        var bb = ByteBuffer.allocate(this.bufferCapacity);
 
         // Collect encountered lines into this List to be returned when the
         // line count requirement is satisfied.
@@ -58,7 +62,7 @@ public class TailReaderImpl implements TailReader {
                     //
                     // We use min(CAP, size - bytesRead) to avoid setting a larger limit
                     // that what the buffer was allocated with.
-                    bb.limit(Math.min(CAP, (int) ch.size() - bytesRead));
+                    bb.limit(Math.min(this.bufferCapacity, (int) ch.size() - bytesRead));
                 }
                 // Set the position of the channel to the start of the chunk.
                 ch.position(start);
