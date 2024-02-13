@@ -8,7 +8,7 @@ import io.micronaut.scheduling.TaskExecutors;
 import io.micronaut.scheduling.annotation.ExecuteOn;
 import io.micronaut.serde.annotation.Serdeable.Serializable;
 import jakarta.annotation.Nullable;
-import qlog.TailReader;
+import qlog.TailReaderImpl;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -28,7 +28,7 @@ public class QueryLogController {
     public HttpResponse<QueryLog> queryLog(@QueryValue String relativePath,
                                            @QueryValue(defaultValue = "42") int count,
                                            @QueryValue @Nullable String filter) {
-        var lines = TailReader.getLastNLines(Path.of("/var/log", relativePath), count, filter);
+        var lines = new TailReaderImpl().getLastNLines(Path.of("/var/log", relativePath), count, filter);
         return HttpResponse.ok(new QueryLog(lines));
     }
 
