@@ -19,6 +19,7 @@ dependencies {
     runtimeOnly("ch.qos.logback:logback-classic")
     testImplementation("io.micronaut:micronaut-http-client")
     testImplementation("org.assertj:assertj-core")
+    testImplementation("org.awaitility:awaitility:4.2.0")
 }
 
 
