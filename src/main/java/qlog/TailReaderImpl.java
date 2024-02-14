@@ -95,19 +95,7 @@ public class TailReaderImpl implements TailReader {
                             // character in the file is a line-ending.
                             continue;
                         }
-                        // Reverse the buffer (since we're iterating through chars backwards),
-                        // and flush it to the result set. If there's a filter defined in the
-                        // arguments, then apply the filter before adding to the result set.
-                        var stringFromBuffer = lineBuffer.reverse().toString();
-                        lineBuffer.setLength(0);
-                        if (filter != null) {
-                            if (stringFromBuffer.contains(filter)) {
-                                collectedLines.add(stringFromBuffer);
-                            }
-                        } else {
-                            collectedLines.addLast(stringFromBuffer);
-                        }
-
+                        maybeCollectLine(lineBuffer, filter, collectedLines);
                         if (collectedLines.size() >= lineCount) {
                             // break out of looping through this chunk if we have enough lines
                             break;
@@ -118,14 +106,14 @@ public class TailReaderImpl implements TailReader {
                 }
                 // End of chunk
 
+                // if we're at the head of a file and the line buffer contains
+                // some chars, we need to append the line to the results
                 if (!lineBuffer.isEmpty() && bytesRead >= ch.size()) {
-                    // Flush the lineBuffer into the result set if we're at the beginning of the file.
-                    collectedLines.addLast(lineBuffer.reverse().toString());
-                    lineBuffer.setLength(0);
+                    maybeCollectLine(lineBuffer, filter, collectedLines);
                 }
-
-                // Break out of chunking if we already have enough lines
-                if (collectedLines.size() == lineCount) {
+                // Stop chunking when we have enough lines collected,
+                // or we've read all the bytes from the file.
+                if (collectedLines.size() == lineCount || bytesRead >= ch.size()) {
                     break;
                 }
                 // Otherwise, prepare for the next chunk by stepping start backwards by the size
@@ -144,5 +132,20 @@ public class TailReaderImpl implements TailReader {
             }
         }
         return collectedLines;
+    }
+
+    private static void maybeCollectLine(StringBuilder lineBuffer, @Nullable String filter, ArrayList<String> collectedLines) {
+        // Reverse the buffer (since we're iterating through chars backwards),
+        // and flush it to the result set. If there's a filter defined in the
+        // arguments, then apply the filter before adding to the result set.
+        var stringFromBuffer = lineBuffer.reverse().toString();
+        lineBuffer.setLength(0);
+        if (filter != null) {
+            if (stringFromBuffer.contains(filter)) {
+                collectedLines.add(stringFromBuffer);
+            }
+        } else {
+            collectedLines.addLast(stringFromBuffer);
+        }
     }
 }

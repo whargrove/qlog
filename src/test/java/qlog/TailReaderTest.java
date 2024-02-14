@@ -1,7 +1,6 @@
 package qlog;
 
 import org.assertj.core.api.WithAssertions;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -10,6 +9,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+import static org.awaitility.Awaitility.await;
 
 public class TailReaderTest implements WithAssertions {
 
@@ -95,6 +97,24 @@ public class TailReaderTest implements WithAssertions {
                         "Told by an idiot, full of sound and fury,",
                         "That struts and frets his hour upon the stage,",
                         "Life's but a walking shadow, a poor player,"));
+    }
+
+    @Test
+    void testOneLineFileWithFilter() {
+        var path = getPathToResource("smallfile");
+        var reader = new TailReaderImpl(65536);
+        await().atMost(1, TimeUnit.SECONDS)
+                .untilAsserted(() -> assertThat(reader.getLastNLines(path, 10, "WONTFIND"))
+                        .isEmpty());
+    }
+
+    @Test
+    void testFilterNoMatches() {
+        var path = getPathToResource("macbeth.txt");
+        var reader = new TailReaderImpl(65536);
+        await().atMost(1, TimeUnit.SECONDS)
+                .untilAsserted(() -> assertThat(reader.getLastNLines(path, 10, "WONTFIND"))
+                        .isEmpty());
     }
 
     @SuppressWarnings("SameParameterValue")
