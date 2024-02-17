@@ -117,6 +117,15 @@ public class TailReaderTest implements WithAssertions {
                         .isEmpty());
     }
 
+    @Test
+    void noLinesFromEmptyFile() {
+        var path = getPathToResource("empty.txt");
+        var reader = new TailReaderImpl(65536);
+        await().atMost(1, TimeUnit.SECONDS)
+                .untilAsserted(() -> assertThat(reader.getLastNLines(path, 10, null))
+                        .isEmpty());
+    }
+
     @SuppressWarnings("SameParameterValue")
     private Path getPathToResource(String fileName) {
         var resourceURL = getClass().getClassLoader().getResource(fileName);
