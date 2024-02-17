@@ -47,6 +47,10 @@ public class TailReaderImpl implements TailReader {
         // This approach requires use of a SeekableByteChannel so that we can manually control
         // position of the channel while reading the chunks.
         try (var ch = Files.newByteChannel(path, StandardOpenOption.READ)) {
+            if (ch.size() == 0) {
+                // The file is empty, so there will never be any lines to collect.
+                return collectedLines;
+            }
             // The start of the chunk is the end (channel size) minus the capacity (limit) of the buffer.
             // If the file is smaller than the buffer we do not allow start to be negative so take the max of 0.
             var start = Math.max(0, ch.size() - bb.limit());
