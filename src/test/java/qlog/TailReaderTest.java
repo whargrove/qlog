@@ -134,6 +134,22 @@ public class TailReaderTest implements WithAssertions {
         assertThat(actual).containsExactly("The way to dusty death. Out, out, brief candle!");
     }
 
+    @Test
+    void returnsContinuationTokenWhenThereAreMoreBytesToReadInTheFile() {
+        var path = getPathToResource("macbeth.txt");
+        var reader = new TailReaderImpl(16);
+        var result = reader.getLastNLines(path, null, 0, 1);
+        assertThat(result.continuationToken()).isNotEmpty();
+    }
+
+    @Test
+    void noContinuationTokenWhenFinishedReadingTheFile() {
+        var path = getPathToResource("smallfile");
+        var reader = new TailReaderImpl(16);
+        var result = reader.getLastNLines(path, null, 0, 1);
+        assertThat(result.continuationToken()).isEmpty();
+    }
+
     @SuppressWarnings("SameParameterValue")
     private Path getPathToResource(String fileName) {
         var resourceURL = getClass().getClassLoader().getResource(fileName);

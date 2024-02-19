@@ -40,6 +40,11 @@ public class TailReaderImpl implements TailReader {
         // line count requirement is satisfied.
         var collectedLines = new ArrayList<String>();
 
+        // Initialize a null reference to store the continuation token. This will be set to the
+        // byte position of the last line-ending seen in the file prior to reaching the desired
+        // line count.
+        @Nullable String token = null;
+
         // Open a seekable channel to the file so that we can read chunks of the file starting
         // at the end. The start of each read will be determined as the byte-position end of the
         // file minus the capacity of the byte buffer. Each "step" will move the start backwards
@@ -101,6 +106,8 @@ public class TailReaderImpl implements TailReader {
                     // chunk.
                     var c = (char) bb.get(i);
                     if (c == '\n') {
+                        // Mark the current position in the buffer since this is a line-ending.
+                        bb.mark();
                         // Skip the first line-ending we encounter (e.g. if the last character in
                         // the file is a line-ending).
                         if (i == fileSize - 1) continue;
@@ -130,6 +137,11 @@ public class TailReaderImpl implements TailReader {
                 // Stop chunking when we have enough lines collected,
                 // or we've read all the bytes from the file.
                 if (collectedLines.size() == count || bytesRead >= fileSize) {
+                    if (bytesRead < fileSize)  {
+                        // If there are more bytes to read in the file, then set the continuation
+                        // token to the byte position of the last line-ending seen in the file.
+                        token = String.valueOf(bytesRead - bb.reset().position());
+                    }
                     break;
                 }
                 // Otherwise, prepare for the next chunk by stepping start backwards by the size
@@ -147,7 +159,7 @@ public class TailReaderImpl implements TailReader {
                 throw new TailReaderIOException("Error reading file: " + path, e);
             }
         }
-        return new ReaderResult(collectedLines, Optional.empty());
+        return new ReaderResult(collectedLines, Optional.ofNullable(token));
     }
 
     private static void maybeCollectLine(StringBuilder lineBuffer, @Nullable String filter, ArrayList<String> collectedLines) {
