@@ -47,13 +47,20 @@ public class TailReaderImpl implements TailReader {
         // This approach requires use of a SeekableByteChannel so that we can manually control
         // position of the channel while reading the chunks.
         try (var ch = Files.newByteChannel(path, StandardOpenOption.READ)) {
-            if (ch.size() == 0) {
+            // Create a local variable to store the size of the file as soon as the channel is
+            // opened. This is necessary because the size of the file may change while we are
+            // reading (e.g. if the file is being written to be another process).
+            var fileSize = ch.size();
+            if (fileSize == 0) {
                 // The file is empty, so there will never be any lines to collect.
                 return new ReaderResult(collectedLines, Optional.empty());
             }
+            // Initialize a counter to keep track of how many lines we've seen. This reader
+            // will skip lines until linesSeen is equal to start.
+            var linesSeen = 0;
             // The start of the chunk is the end (channel size) minus the capacity (limit) of the buffer.
             // If the file is smaller than the buffer we do not allow start to be negative so take the max of 0.
-            var chunkStart = Math.max(0, ch.size() - bb.limit());
+            var chunkStart = Math.max(0, fileSize - bb.limit());
             // Create a lineBuffer to store characters read from the chunk. This buffer exists outside the scope
             // of the chunk loop since the chunk is an arbitrary boundary and may split a line. (The next chunk
             // would finish the line and flush the characters from the buffer into the collected lines.)
@@ -63,7 +70,7 @@ public class TailReaderImpl implements TailReader {
             var bytesRead = 0;
             // Chunk through the file while the collectedLines size is less than the lineCount
             // or we've read all the bytes in the file.
-            while (collectedLines.size() < count || bytesRead < ch.size()) {
+            while (collectedLines.size() < count || bytesRead < fileSize) {
                 if (bytesRead > 0) {
                     // Each time we start a new chunk, we want to dynamically size the limit
                     // of the byte buffer so that we only read the bytes necessary to complete
@@ -73,7 +80,7 @@ public class TailReaderImpl implements TailReader {
                     //
                     // We use min(CAP, size - bytesRead) to avoid setting a larger limit
                     // that what the buffer was allocated with.
-                    bb.limit(Math.min(this.bufferCapacity, (int) ch.size() - bytesRead));
+                    bb.limit(Math.min(this.bufferCapacity, (int) fileSize - bytesRead));
                 }
                 // Set the position of the channel to the start of the chunk.
                 ch.position(chunkStart);
@@ -94,30 +101,35 @@ public class TailReaderImpl implements TailReader {
                     // chunk.
                     var c = (char) bb.get(i);
                     if (c == '\n') {
-                        if (lineBuffer.length() <= 0) {
-                            // skip flushing of the lineBuffer is empty, e.g. if the last
-                            // character in the file is a line-ending.
-                            continue;
+                        // Skip the first line-ending we encounter (e.g. if the last character in
+                        // the file is a line-ending).
+                        if (i == fileSize - 1) continue;
+                        // We've encountered a line ending that is not the end of the file
+                        linesSeen += 1;
+                        // If we've seen enough lines to start collecting results and the line
+                        // buffer is not empty then we can try to collect the line.
+                        if (!lineBuffer.isEmpty() && linesSeen >= start) {
+                            maybeCollectLine(lineBuffer, filter, collectedLines);
                         }
-                        maybeCollectLine(lineBuffer, filter, collectedLines);
                         if (collectedLines.size() >= count) {
                             // break out of looping through this chunk if we have enough lines
                             break;
                         }
                     } else {
-                        lineBuffer.append(c);
+                        // we don't want to fill the liner buffer until we've seen the start line
+                        if (linesSeen >= start) lineBuffer.append(c);
                     }
                 }
                 // End of chunk
 
                 // if we're at the head of a file and the line buffer contains
                 // some chars, we need to append the line to the results
-                if (!lineBuffer.isEmpty() && bytesRead >= ch.size()) {
+                if (!lineBuffer.isEmpty() && bytesRead >= fileSize) {
                     maybeCollectLine(lineBuffer, filter, collectedLines);
                 }
                 // Stop chunking when we have enough lines collected,
                 // or we've read all the bytes from the file.
-                if (collectedLines.size() == count || bytesRead >= ch.size()) {
+                if (collectedLines.size() == count || bytesRead >= fileSize) {
                     break;
                 }
                 // Otherwise, prepare for the next chunk by stepping start backwards by the size

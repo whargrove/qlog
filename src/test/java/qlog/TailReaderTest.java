@@ -126,6 +126,14 @@ public class TailReaderTest implements WithAssertions {
                         .isEmpty());
     }
 
+    @Test
+    void skipsLinesWhenStartIsGreaterThanZero() {
+        var path = getPathToResource("macbeth.txt");
+        var reader = new TailReaderImpl(65536);
+        var actual = reader.getLastNLines(path, null, 5, 1).lines();
+        assertThat(actual).containsExactly("The way to dusty death. Out, out, brief candle!");
+    }
+
     @SuppressWarnings("SameParameterValue")
     private Path getPathToResource(String fileName) {
         var resourceURL = getClass().getClassLoader().getResource(fileName);
