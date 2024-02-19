@@ -15,7 +15,7 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.Optional;
 
 @Singleton
 public class TailReaderImpl implements TailReader {
@@ -32,7 +32,7 @@ public class TailReaderImpl implements TailReader {
      * {@inheritDoc}
      */
     @Override
-    public List<String> getLastNLines(Path path, @Nullable String filter, int start, int count) {
+    public ReaderResult getLastNLines(Path path, @Nullable String filter, int start, int count) {
         // Each chunk of the file will be read into this buffer
         var bb = ByteBuffer.allocate(this.bufferCapacity);
 
@@ -49,7 +49,7 @@ public class TailReaderImpl implements TailReader {
         try (var ch = Files.newByteChannel(path, StandardOpenOption.READ)) {
             if (ch.size() == 0) {
                 // The file is empty, so there will never be any lines to collect.
-                return collectedLines;
+                return new ReaderResult(collectedLines, Optional.empty());
             }
             // The start of the chunk is the end (channel size) minus the capacity (limit) of the buffer.
             // If the file is smaller than the buffer we do not allow start to be negative so take the max of 0.
@@ -135,7 +135,7 @@ public class TailReaderImpl implements TailReader {
                 throw new TailReaderIOException("Error reading file: " + path, e);
             }
         }
-        return collectedLines;
+        return new ReaderResult(collectedLines, Optional.empty());
     }
 
     private static void maybeCollectLine(StringBuilder lineBuffer, @Nullable String filter, ArrayList<String> collectedLines) {

@@ -4,6 +4,7 @@ import jakarta.annotation.Nullable;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 
 public interface TailReader {
     /**
@@ -15,5 +16,8 @@ public interface TailReader {
      * @param count  The number of lines to read out in the returned List.
      * @return A List of lines ordered with the newest entries at the head of the List.
      */
-    List<String> getLastNLines(Path path, @Nullable String filter, int start, int count);
+    ReaderResult getLastNLines(Path path, @Nullable String filter, int start, int count);
+
+    record ReaderResult(List<String> lines, Optional<String> continuationToken) {
+    }
 }

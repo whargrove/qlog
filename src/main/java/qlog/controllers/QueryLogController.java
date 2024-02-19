@@ -60,10 +60,10 @@ public class QueryLogController {
                                            @QueryValue(defaultValue = "0") @PositiveOrZero int start,
                                            @QueryValue(defaultValue = "1000") @Positive @Max(value = 10_000) int count,
                                            @QueryValue @Nullable String continuationToken) {
-        var lines = this.tailReader.getLastNLines(Path.of("/var/log", relativePath), filter, start, count);
+        var result = this.tailReader.getLastNLines(Path.of("/var/log", relativePath), filter, start, count);
         // TODO: Get the next continuation token from the tailReader
         //       Return the continuation token in the metadata of the response.
-        return HttpResponse.ok(new QueryLog(lines, null));
+        return HttpResponse.ok(new QueryLog(result.lines(), null));
     }
 
     @Serializable
