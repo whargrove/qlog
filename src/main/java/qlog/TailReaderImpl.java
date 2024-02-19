@@ -67,7 +67,14 @@ public class TailReaderImpl implements TailReader {
             // If a continuation token is provided, then we want to start reading the file from
             // the byte position of the continuation token. Otherwise, we start reading from the
             // end of the file.
-            long remainingBytes = Optional.ofNullable(continuationToken)
+            var maybeContinuationToken = Optional.ofNullable(continuationToken);
+            if (maybeContinuationToken.isPresent()) {
+                // If the continuation token is present, then we want to start reading the file
+                // from the byte position of the continuation token. So we effectively ignore
+                // the start parameter.
+                start = 0;
+            }
+            long remainingBytes = maybeContinuationToken
                     .map(Long::parseLong)
                     .orElse(fileSize);
             // Initialize a counter to keep track of how many lines we've seen. This reader

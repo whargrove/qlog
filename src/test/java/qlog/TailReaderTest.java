@@ -166,6 +166,21 @@ public class TailReaderTest implements WithAssertions {
                 .containsExactly("And then is heard no more. It is a tale");
     }
 
+    @Test
+    void startIsIgnoredWhenContinuationTokenIsPresent() {
+        var path = getPathToResource("macbeth.txt");
+        var reader = new TailReaderImpl(16);
+        var result = reader.getLastNLines(path, null, null, 0, 2);
+        assertThat(result.lines())
+                .as("The last two lines are read from the file.")
+                .containsExactly("Signifying nothing.", "Told by an idiot, full of sound and fury,");
+        var continuationToken = result.continuationToken().orElseThrow();
+        var moreLines = reader.getLastNLines(path, null, continuationToken, 1, 1).lines();
+        assertThat(moreLines)
+                .as("The next line is read from the file, the start parameter is ignored.")
+                .containsExactly("And then is heard no more. It is a tale");
+    }
+
     @SuppressWarnings("SameParameterValue")
     private Path getPathToResource(String fileName) {
         var resourceURL = getClass().getClassLoader().getResource(fileName);
