@@ -32,7 +32,7 @@ public class TailReaderImpl implements TailReader {
      * {@inheritDoc}
      */
     @Override
-    public List<String> getLastNLines(Path path, int lineCount, @Nullable String filter) {
+    public List<String> getLastNLines(Path path, @Nullable String filter, int count) {
         // Each chunk of the file will be read into this buffer
         var bb = ByteBuffer.allocate(this.bufferCapacity);
 
@@ -63,7 +63,7 @@ public class TailReaderImpl implements TailReader {
             var bytesRead = 0;
             // Chunk through the file while the collectedLines size is less than the lineCount
             // or we've read all the bytes in the file.
-            while (collectedLines.size() < lineCount || bytesRead < ch.size()) {
+            while (collectedLines.size() < count || bytesRead < ch.size()) {
                 if (bytesRead > 0) {
                     // Each time we start a new chunk, we want to dynamically size the limit
                     // of the byte buffer so that we only read the bytes necessary to complete
@@ -100,7 +100,7 @@ public class TailReaderImpl implements TailReader {
                             continue;
                         }
                         maybeCollectLine(lineBuffer, filter, collectedLines);
-                        if (collectedLines.size() >= lineCount) {
+                        if (collectedLines.size() >= count) {
                             // break out of looping through this chunk if we have enough lines
                             break;
                         }
@@ -117,7 +117,7 @@ public class TailReaderImpl implements TailReader {
                 }
                 // Stop chunking when we have enough lines collected,
                 // or we've read all the bytes from the file.
-                if (collectedLines.size() == lineCount || bytesRead >= ch.size()) {
+                if (collectedLines.size() == count || bytesRead >= ch.size()) {
                     break;
                 }
                 // Otherwise, prepare for the next chunk by stepping start backwards by the size

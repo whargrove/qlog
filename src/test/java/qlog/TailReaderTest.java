@@ -19,7 +19,7 @@ public class TailReaderTest implements WithAssertions {
     void returnsLastNLinesInFile() {
         var file = getPathToResource("macbeth.txt");
         var n = 3;
-        List<String> lastNLines = new TailReaderImpl(65536).getLastNLines(file, n, null);
+        List<String> lastNLines = new TailReaderImpl(65536).getLastNLines(file, null, n);
 
         assertThat(lastNLines)
                 .as("The last N lines were read from the file.")
@@ -36,7 +36,7 @@ public class TailReaderTest implements WithAssertions {
     void fileLargerThanBufferReturnsLastNLinesInFile() throws IOException {
         var path = getPathToResource("128k_access.log");
         var n = 5;
-        List<String> lastNLines = new TailReaderImpl(65536).getLastNLines(path, n, null);
+        List<String> lastNLines = new TailReaderImpl(65536).getLastNLines(path, null, n);
 
         assertThat(lastNLines)
                 .as("The last N lines were read from the file.")
@@ -52,7 +52,7 @@ public class TailReaderTest implements WithAssertions {
     void largeCountOfFilesCollectsLinesAcrossChunkBoundaries() throws IOException {
         var path = getPathToResource("128k_access.log");
         var n = 250;
-        List<String> lastNLines = new TailReaderImpl(65536).getLastNLines(path, n, null);
+        List<String> lastNLines = new TailReaderImpl(65536).getLastNLines(path, null, n);
 
         assertThat(lastNLines)
                 .as("The last N lines were read from the file.")
@@ -68,7 +68,7 @@ public class TailReaderTest implements WithAssertions {
     void readingAllOfTheLinesInAFileReturnsTheLinesInReversedOrder() throws IOException {
         var path = getPathToResource("128k_access.log");
         var n = (int) Files.lines(path).count(); // all lines
-        List<String> lastNLines = new TailReaderImpl(65536).getLastNLines(path, n, null);
+        List<String> lastNLines = new TailReaderImpl(65536).getLastNLines(path, null, n);
 
         assertThat(lastNLines)
                 .as("The last N lines were read from the file.")
@@ -82,7 +82,7 @@ public class TailReaderTest implements WithAssertions {
     @Test
     void onlyLinesMatchingFilterAreReturned() {
         var path = getPathToResource("macbeth.txt");
-        List<String> actual = new TailReaderImpl(65536).getLastNLines(path, 1, "tomorrow");
+        List<String> actual = new TailReaderImpl(65536).getLastNLines(path, "tomorrow", 1);
         assertThat(actual).hasSize(1);
         assertThat(actual).containsExactlyElementsOf(List.of("Tomorrow, and tomorrow, and tomorrow,"));
     }
@@ -90,7 +90,7 @@ public class TailReaderTest implements WithAssertions {
     @Test
     void multipleLinesMatchingFilterAreReturned() {
         var path = getPathToResource("macbeth.txt");
-        List<String> actual = new TailReaderImpl(65536).getLastNLines(path, 3, ",");
+        List<String> actual = new TailReaderImpl(65536).getLastNLines(path, ",", 3);
         assertThat(actual).hasSize(3);
         assertThat(actual)
                 .containsExactlyElementsOf(List.of(
@@ -104,7 +104,7 @@ public class TailReaderTest implements WithAssertions {
         var path = getPathToResource("smallfile");
         var reader = new TailReaderImpl(65536);
         await().atMost(1, TimeUnit.SECONDS)
-                .untilAsserted(() -> assertThat(reader.getLastNLines(path, 10, "WONTFIND"))
+                .untilAsserted(() -> assertThat(reader.getLastNLines(path, "WONTFIND", 10))
                         .isEmpty());
     }
 
@@ -113,7 +113,7 @@ public class TailReaderTest implements WithAssertions {
         var path = getPathToResource("macbeth.txt");
         var reader = new TailReaderImpl(65536);
         await().atMost(1, TimeUnit.SECONDS)
-                .untilAsserted(() -> assertThat(reader.getLastNLines(path, 10, "WONTFIND"))
+                .untilAsserted(() -> assertThat(reader.getLastNLines(path, "WONTFIND", 10))
                         .isEmpty());
     }
 
@@ -122,7 +122,7 @@ public class TailReaderTest implements WithAssertions {
         var path = getPathToResource("empty.txt");
         var reader = new TailReaderImpl(65536);
         await().atMost(1, TimeUnit.SECONDS)
-                .untilAsserted(() -> assertThat(reader.getLastNLines(path, 10, null))
+                .untilAsserted(() -> assertThat(reader.getLastNLines(path, null, 10))
                         .isEmpty());
     }
 
