@@ -32,7 +32,11 @@ public class TailReaderImpl implements TailReader {
      * {@inheritDoc}
      */
     @Override
-    public ReaderResult getLastNLines(Path path, @Nullable String filter, int start, int count) {
+    public ReaderResult getLastNLines(Path path,
+                                      @Nullable String filter,
+                                      @Nullable String continuationToken,
+                                      int start,
+                                      int count) {
         // Each chunk of the file will be read into this buffer
         var bb = ByteBuffer.allocate(this.bufferCapacity);
 
@@ -43,7 +47,7 @@ public class TailReaderImpl implements TailReader {
         // Initialize a null reference to store the continuation token. This will be set to the
         // byte position of the last line-ending seen in the file prior to reaching the desired
         // line count.
-        @Nullable String token = null;
+        @Nullable String nextToken = null;
 
         // Open a seekable channel to the file so that we can read chunks of the file starting
         // at the end. The start of each read will be determined as the byte-position end of the
@@ -137,10 +141,10 @@ public class TailReaderImpl implements TailReader {
                 // Stop chunking when we have enough lines collected,
                 // or we've read all the bytes from the file.
                 if (collectedLines.size() == count || bytesRead >= fileSize) {
-                    if (bytesRead < fileSize)  {
+                    if (bytesRead < fileSize) {
                         // If there are more bytes to read in the file, then set the continuation
                         // token to the byte position of the last line-ending seen in the file.
-                        token = String.valueOf(bytesRead - bb.reset().position());
+                        nextToken = String.valueOf(bytesRead - bb.reset().position());
                     }
                     break;
                 }
@@ -159,7 +163,7 @@ public class TailReaderImpl implements TailReader {
                 throw new TailReaderIOException("Error reading file: " + path, e);
             }
         }
-        return new ReaderResult(collectedLines, Optional.ofNullable(token));
+        return new ReaderResult(collectedLines, Optional.ofNullable(nextToken));
     }
 
     private static void maybeCollectLine(StringBuilder lineBuffer, @Nullable String filter, ArrayList<String> collectedLines) {
