@@ -1,6 +1,7 @@
 package qlog;
 
 import org.assertj.core.api.WithAssertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -148,6 +149,21 @@ public class TailReaderTest implements WithAssertions {
         var reader = new TailReaderImpl(16);
         var result = reader.getLastNLines(path, null, null, 0, 1);
         assertThat(result.continuationToken()).isEmpty();
+    }
+
+    @Test
+    void continuationTokenIsUsedToReadMoreLines() {
+        var path = getPathToResource("macbeth.txt");
+        var reader = new TailReaderImpl(16);
+        var result = reader.getLastNLines(path, null, null, 0, 2);
+        assertThat(result.lines())
+                .as("The last two lines are read from the file.")
+                .containsExactly("Signifying nothing.", "Told by an idiot, full of sound and fury,");
+        var continuationToken = result.continuationToken().orElseThrow();
+        var moreLines = reader.getLastNLines(path, null, continuationToken, 0, 1).lines();
+        assertThat(moreLines)
+                .as("The next line is read from the file (third from the end).")
+                .containsExactly("And then is heard no more. It is a tale");
     }
 
     @SuppressWarnings("SameParameterValue")

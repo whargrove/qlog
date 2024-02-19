@@ -64,12 +64,18 @@ public class TailReaderImpl implements TailReader {
                 // The file is empty, so there will never be any lines to collect.
                 return new ReaderResult(collectedLines, Optional.empty());
             }
+            // If a continuation token is provided, then we want to start reading the file from
+            // the byte position of the continuation token. Otherwise, we start reading from the
+            // end of the file.
+            long remainingBytes = Optional.ofNullable(continuationToken)
+                    .map(Long::parseLong)
+                    .orElse(fileSize);
             // Initialize a counter to keep track of how many lines we've seen. This reader
             // will skip lines until linesSeen is equal to start.
             var linesSeen = 0;
             // The start of the chunk is the end (channel size) minus the capacity (limit) of the buffer.
             // If the file is smaller than the buffer we do not allow start to be negative so take the max of 0.
-            var chunkStart = Math.max(0, fileSize - bb.limit());
+            var chunkStart = Math.max(0, remainingBytes - bb.limit());
             // Create a lineBuffer to store characters read from the chunk. This buffer exists outside the scope
             // of the chunk loop since the chunk is an arbitrary boundary and may split a line. (The next chunk
             // would finish the line and flush the characters from the buffer into the collected lines.)
@@ -87,9 +93,9 @@ public class TailReaderImpl implements TailReader {
                     // we reach the head of the file to avoid reading bytes from the file
                     // that were already read in a previous chunk.
                     //
-                    // We use min(CAP, size - bytesRead) to avoid setting a larger limit
+                    // We use min(CAP, remainingBytes - bytesRead) to avoid setting a larger limit
                     // that what the buffer was allocated with.
-                    bb.limit(Math.min(this.bufferCapacity, (int) fileSize - bytesRead));
+                    bb.limit(Math.min(this.bufferCapacity, (int) remainingBytes - bytesRead));
                 }
                 // Set the position of the channel to the start of the chunk.
                 ch.position(chunkStart);
@@ -110,8 +116,11 @@ public class TailReaderImpl implements TailReader {
                     // chunk.
                     var c = (char) bb.get(i);
                     if (c == '\n') {
-                        // Mark the current position in the buffer since this is a line-ending.
-                        bb.mark();
+                        // Set the position in the buffer to the current byte position of the
+                        // line-ending so that we can read the position as the continuation
+                        // token. This is necessary because the position of the buffer never
+                        // changes since we're using absolute reads from the buffer.
+                        bb.position(i);
                         // Skip the first line-ending we encounter (e.g. if the last character in
                         // the file is a line-ending).
                         if (i == fileSize - 1) continue;
@@ -144,7 +153,7 @@ public class TailReaderImpl implements TailReader {
                     if (bytesRead < fileSize) {
                         // If there are more bytes to read in the file, then set the continuation
                         // token to the byte position of the last line-ending seen in the file.
-                        nextToken = String.valueOf(bytesRead - bb.reset().position());
+                        nextToken = String.valueOf(fileSize - bytesRead + bb.position());
                     }
                     break;
                 }
