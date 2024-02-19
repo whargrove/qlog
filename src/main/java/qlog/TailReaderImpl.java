@@ -123,14 +123,14 @@ public class TailReaderImpl implements TailReader {
                     // chunk.
                     var c = (char) bb.get(i);
                     if (c == '\n') {
+                        // Skip the first line-ending we encounter (e.g. if the last character in
+                        // the file is a line-ending).
+                        if (chunkStart + i + 1 == remainingBytes) continue;
                         // Set the position in the buffer to the current byte position of the
                         // line-ending so that we can read the position as the continuation
                         // token. This is necessary because the position of the buffer never
                         // changes since we're using absolute reads from the buffer.
                         bb.position(i);
-                        // Skip the first line-ending we encounter (e.g. if the last character in
-                        // the file is a line-ending).
-                        if (i == fileSize - 1) continue;
                         // We've encountered a line ending that is not the end of the file
                         linesSeen += 1;
                         // If we've seen enough lines to start collecting results and the line
