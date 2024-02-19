@@ -49,6 +49,10 @@ public class TailReaderImpl implements TailReader {
         // line count.
         @Nullable String nextToken = null;
 
+        LOG.atInfo().log("Reading file at path: {}, filter: {}, lineCount: {}",
+                path, filter, count);
+        var startNs = System.nanoTime();
+
         // Open a seekable channel to the file so that we can read chunks of the file starting
         // at the end. The start of each read will be determined as the byte-position end of the
         // file minus the capacity of the byte buffer. Each "step" will move the start backwards
@@ -181,7 +185,11 @@ public class TailReaderImpl implements TailReader {
                 LOG.error("Error reading file: {}", path, e);
                 throw new TailReaderIOException("Error reading file: " + path, e);
             }
+        } finally {
+            var durationNs = System.nanoTime() - startNs;
+            LOG.atInfo().log("Finished reading file at path: {}, duration: {}ms", path, durationNs / 1_000_000 );
         }
+        LOG.atInfo().log("File at path: {}, {} lines collected", path, collectedLines.size());
         return new ReaderResult(collectedLines, Optional.ofNullable(nextToken));
     }
 
