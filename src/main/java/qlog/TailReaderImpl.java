@@ -32,7 +32,7 @@ public class TailReaderImpl implements TailReader {
      * {@inheritDoc}
      */
     @Override
-    public List<String> getLastNLines(Path path, @Nullable String filter, int count) {
+    public List<String> getLastNLines(Path path, @Nullable String filter, int start, int count) {
         // Each chunk of the file will be read into this buffer
         var bb = ByteBuffer.allocate(this.bufferCapacity);
 
@@ -53,7 +53,7 @@ public class TailReaderImpl implements TailReader {
             }
             // The start of the chunk is the end (channel size) minus the capacity (limit) of the buffer.
             // If the file is smaller than the buffer we do not allow start to be negative so take the max of 0.
-            var start = Math.max(0, ch.size() - bb.limit());
+            var chunkStart = Math.max(0, ch.size() - bb.limit());
             // Create a lineBuffer to store characters read from the chunk. This buffer exists outside the scope
             // of the chunk loop since the chunk is an arbitrary boundary and may split a line. (The next chunk
             // would finish the line and flush the characters from the buffer into the collected lines.)
@@ -76,7 +76,7 @@ public class TailReaderImpl implements TailReader {
                     bb.limit(Math.min(this.bufferCapacity, (int) ch.size() - bytesRead));
                 }
                 // Set the position of the channel to the start of the chunk.
-                ch.position(start);
+                ch.position(chunkStart);
                 // Read the bytes from the channel starting from the position into the bytebuffer.
                 bytesRead += ch.read(bb);
                 for (int i = bb.position() - 1; i >= 0; i--) {
@@ -123,7 +123,7 @@ public class TailReaderImpl implements TailReader {
                 // Otherwise, prepare for the next chunk by stepping start backwards by the size
                 // of the buffer and clearing the buffer of its contents so that the next read will
                 // fill the buffer with the next chunk of text from the file.
-                start = Math.max(0, start - bb.limit());
+                chunkStart = Math.max(0, chunkStart - bb.limit());
                 bb.clear();
             }
         } catch (IOException e) {
