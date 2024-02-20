@@ -79,7 +79,7 @@ public class TailReaderImpl implements TailReader {
                     .orElse(fileSize);
             // Initialize a counter to keep track of how many lines we've seen. This reader
             // will skip lines until linesSeen is equal to start.
-            var linesSeen = 0;
+            var linesSeen = 0L;
             // The start of the chunk is the end (channel size) minus the capacity (limit) of the buffer.
             // If the file is smaller than the buffer we do not allow start to be negative so take the max of 0.
             var chunkStart = Math.max(0, remainingBytes - bb.limit());
@@ -89,7 +89,7 @@ public class TailReaderImpl implements TailReader {
             var lineBuffer = new StringBuilder();
             // Keep track of how many bytes we read from the file so that we can stop from reading
             // the head of the file multiple times.
-            var bytesRead = 0;
+            var bytesRead = 0L;
             // Chunk through the file while the collectedLines size is less than the lineCount
             // or we've read all the bytes in the file.
             while (collectedLines.size() < count || bytesRead < fileSize) {
@@ -101,8 +101,11 @@ public class TailReaderImpl implements TailReader {
                     // that were already read in a previous chunk.
                     //
                     // We use min(CAP, remainingBytes - bytesRead) to avoid setting a larger limit
-                    // that what the buffer was allocated with.
-                    bb.limit(Math.min(this.bufferCapacity, (int) remainingBytes - bytesRead));
+                    // that what the buffer initially was allocated with.
+                    if (remainingBytes - bytesRead < this.bufferCapacity) {
+                        // the initial buffer capacity is an int, so this is a safe cast.
+                        bb.limit((int)(remainingBytes - bytesRead));
+                    }
                 }
                 // Set the position of the channel to the start of the chunk.
                 ch.position(chunkStart);
