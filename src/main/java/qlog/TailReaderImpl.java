@@ -49,6 +49,10 @@ public class TailReaderImpl implements TailReader {
         // line count.
         @Nullable String nextToken = null;
 
+        LOG.atInfo().log("Reading file at path: {}, filter: {}, lineCount: {}",
+                path, filter, count);
+        var startNs = System.nanoTime();
+
         // Open a seekable channel to the file so that we can read chunks of the file starting
         // at the end. The start of each read will be determined as the byte-position end of the
         // file minus the capacity of the byte buffer. Each "step" will move the start backwards
@@ -79,7 +83,7 @@ public class TailReaderImpl implements TailReader {
                     .orElse(fileSize);
             // Initialize a counter to keep track of how many lines we've seen. This reader
             // will skip lines until linesSeen is equal to start.
-            var linesSeen = 0;
+            var linesSeen = 0L;
             // The start of the chunk is the end (channel size) minus the capacity (limit) of the buffer.
             // If the file is smaller than the buffer we do not allow start to be negative so take the max of 0.
             var chunkStart = Math.max(0, remainingBytes - bb.limit());
@@ -89,7 +93,7 @@ public class TailReaderImpl implements TailReader {
             var lineBuffer = new StringBuilder();
             // Keep track of how many bytes we read from the file so that we can stop from reading
             // the head of the file multiple times.
-            var bytesRead = 0;
+            var bytesRead = 0L;
             // Chunk through the file while the collectedLines size is less than the lineCount
             // or we've read all the bytes in the file.
             while (collectedLines.size() < count || bytesRead < fileSize) {
@@ -101,8 +105,11 @@ public class TailReaderImpl implements TailReader {
                     // that were already read in a previous chunk.
                     //
                     // We use min(CAP, remainingBytes - bytesRead) to avoid setting a larger limit
-                    // that what the buffer was allocated with.
-                    bb.limit(Math.min(this.bufferCapacity, (int) remainingBytes - bytesRead));
+                    // that what the buffer initially was allocated with.
+                    if (remainingBytes - bytesRead < this.bufferCapacity) {
+                        // the initial buffer capacity is an int, so this is a safe cast.
+                        bb.limit((int)(remainingBytes - bytesRead));
+                    }
                 }
                 // Set the position of the channel to the start of the chunk.
                 ch.position(chunkStart);
@@ -178,7 +185,11 @@ public class TailReaderImpl implements TailReader {
                 LOG.error("Error reading file: {}", path, e);
                 throw new TailReaderIOException("Error reading file: " + path, e);
             }
+        } finally {
+            var durationNs = System.nanoTime() - startNs;
+            LOG.atInfo().log("Finished reading file at path: {}, duration: {}ms", path, durationNs / 1_000_000 );
         }
+        LOG.atInfo().log("File at path: {}, {} lines collected", path, collectedLines.size());
         return new ReaderResult(collectedLines, Optional.ofNullable(nextToken));
     }
 
