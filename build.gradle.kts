@@ -17,6 +17,7 @@ dependencies {
     annotationProcessor("io.micronaut.validation:micronaut-validation-processor")
     implementation("io.micronaut.validation:micronaut-validation")
     implementation("io.micronaut.serde:micronaut-serde-jackson")
+    implementation("dev.failsafe:failsafe:3.3.2")
     compileOnly("io.micronaut:micronaut-http-client")
     runtimeOnly("ch.qos.logback:logback-classic")
     testImplementation("io.micronaut:micronaut-http-client")
