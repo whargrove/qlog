@@ -1,5 +1,7 @@
 package qlog.controllers;
 
+import dev.failsafe.Failsafe;
+import dev.failsafe.Timeout;
 import io.micronaut.http.HttpResponse;
 import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Get;
@@ -16,6 +18,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 import qlog.TailReader;
 
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.List;
 
 @Controller("/queryLog")
@@ -59,8 +62,10 @@ public class QueryLogController {
                                            @QueryValue @Nullable String filter,
                                            @QueryValue(defaultValue = "0") @PositiveOrZero int start,
                                            @QueryValue(defaultValue = "1000") @Positive @Max(value = 10_000) int count,
-                                           @QueryValue @Nullable String continuationToken) {
-        var result = this.tailReader.getLastNLines(Path.of("/var/log", relativePath), filter, continuationToken, start, count);
+                                           @QueryValue @Nullable String continuationToken,
+                                           @QueryValue(defaultValue = "10") @Positive @Max(value = 60) int timeoutSeconds) {
+        var result = Failsafe.with(Timeout.builder(Duration.ofSeconds(timeoutSeconds)).withInterrupt().build())
+                .get(() -> this.tailReader.getLastNLines(Path.of("/var/log", relativePath), filter, continuationToken, start, count));
         return HttpResponse.ok(new QueryLog(
                 result.lines(),
                 result.continuationToken()
