@@ -145,7 +145,7 @@ public class TailReaderImpl implements TailReader {
                         if (!lineBuffer.isEmpty() && linesSeen >= start) {
                             maybeCollectLine(lineBuffer, filter, collectedLines);
                         }
-                        if (collectedLines.size() >= count) {
+                        if (linesSeen >= start && (linesSeen == count || collectedLines.size() == count)) {
                             // break out of looping through this chunk if we have enough lines
                             break;
                         }
@@ -163,7 +163,7 @@ public class TailReaderImpl implements TailReader {
                 }
                 // Stop chunking when we have enough lines collected,
                 // or we've read all the bytes from the file.
-                if (collectedLines.size() == count || bytesRead >= fileSize) {
+                if (linesSeen == count || collectedLines.size() == count || bytesRead >= fileSize) {
                     if (bytesRead < fileSize) {
                         // If there are more bytes to read in the file, then set the continuation
                         // token to the byte position of the last line-ending seen in the file.

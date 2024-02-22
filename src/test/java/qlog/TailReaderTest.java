@@ -83,7 +83,7 @@ public class TailReaderTest implements WithAssertions {
     @Test
     void onlyLinesMatchingFilterAreReturned() {
         var path = getPathToResource("macbeth.txt");
-        List<String> actual = new TailReaderImpl(65536).getLastNLines(path, "tomorrow", null, 0, 1).lines();
+        List<String> actual = new TailReaderImpl(65536).getLastNLines(path, "tomorrow", null, 0, 10).lines();
         assertThat(actual).hasSize(1);
         assertThat(actual).containsExactlyElementsOf(List.of("Tomorrow, and tomorrow, and tomorrow,"));
     }
@@ -92,12 +92,11 @@ public class TailReaderTest implements WithAssertions {
     void multipleLinesMatchingFilterAreReturned() {
         var path = getPathToResource("macbeth.txt");
         List<String> actual = new TailReaderImpl(65536).getLastNLines(path, ",", null, 0, 3).lines();
-        assertThat(actual).hasSize(3);
         assertThat(actual)
-                .containsExactlyElementsOf(List.of(
-                        "Told by an idiot, full of sound and fury,",
-                        "That struts and frets his hour upon the stage,",
-                        "Life's but a walking shadow, a poor player,"));
+                .as("The first three lines are read and only one has a comma char")
+                .hasSize(1);
+        assertThat(actual)
+                .containsExactlyElementsOf(List.of("Told by an idiot, full of sound and fury,"));
     }
 
     @Test
